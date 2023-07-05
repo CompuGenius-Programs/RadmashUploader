@@ -3,6 +3,10 @@ import sys
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QPushButton, QFileDialog, QMessageBox
+from dotenv import load_dotenv
+
+import os
+load_dotenv()
 
 
 class FileEntryWidget(QWidget):
@@ -90,7 +94,8 @@ class MainWindow(QMainWindow):
 
         data = {f'title_{i + 1}': title for i, (_, _, title) in enumerate(file_entries_data)}
 
-        response = requests.post('http://localhost:8080/upload', files=files, data=data)
+        server_url = os.getenv('SERVER_URL')
+        response = requests.post(server_url + '/upload', files=files, data=data)
 
         if response.status_code == 200:
             QMessageBox.information(self, "Success", "Files uploaded successfully")
