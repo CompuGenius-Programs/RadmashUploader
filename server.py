@@ -25,34 +25,12 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
-# def update_html_file(uploaded_files, titles):
-#     for file, title in zip(uploaded_files, titles):
-#         if title.startswith('Kaarah'):
-#             filename = 'kaarah.html'
-#         else:
-#             filename = "maamarei_mordechai.html"
-#
-#         with open(filename, 'r+', encoding="utf-8") as f:
-#             soup = BeautifulSoup(f, 'html.parser')
-#             target_ul = soup.find('ul', {'id': 'file-list'})
-#             li_tag = soup.new_tag('li')
-#             fname = "/%s" % file.replace('\\', '/')
-#             a_tag = soup.new_tag('a', href=fname, target='blank')
-#             a_tag.string = title
-#             li_tag.append(a_tag)
-#             target_ul.append(li_tag)
-#
-#             f.seek(0)
-#             f.write(str(soup.prettify()))
-#             f.truncate()
-
-
 def update_html_file(uploaded_files, titles):
     with Repo.clone_from(remote, "repo") as repo:
         changed_files = []
 
         for file, title in zip(uploaded_files, titles):
-            if title.startswith('Kaarah'):
+            if file.lower().startswith('kaarah'):
                 fname = 'kaarah.html'
                 directory = app.config['KAARAH_FOLDER']
             else:
