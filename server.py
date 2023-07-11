@@ -50,7 +50,7 @@ def update_html_file(uploaded_files, titles):
                 a_tag = soup.new_tag('a', href=fname, target='blank')
                 a_tag.string = title
                 li_tag.append(a_tag)
-                target_ul.append(li_tag)
+                target_ul.insert(0, li_tag)
 
                 f.seek(0)
                 f.write(str(soup.prettify()))
