@@ -58,10 +58,17 @@ class MainWindow(QMainWindow):
         server_url_layout = QHBoxLayout()
         self.server_url_label = QLabel("Server URL (don't change unless necessary):")
         self.server_url_entry = QLineEdit()
+        self.server_url_entry.mouseDoubleClickEvent = self.toggle_editable
 
-        with open('config.json') as config_file:
-            config = json.load(config_file)
-            default_server_url = config.get('SERVER_URL')
+        try:
+            with open('config.json') as config_file:
+                config = json.load(config_file)
+                default_server_url = config.get('SERVER_URL')
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            default_server_url = ""
+
+        if default_server_url != "":
+            self.server_url_entry.setReadOnly(True)
 
         self.server_url_entry.setText(default_server_url)
         server_url_layout.addWidget(self.server_url_label)
@@ -79,6 +86,9 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.select_button)
         main_layout.addLayout(self.files_layout)
         main_layout.addWidget(self.submit_button)
+
+    def toggle_editable(self, event):
+        self.server_url_entry.setReadOnly(False)
 
     def select_files(self):
         file_dialog = QFileDialog()
