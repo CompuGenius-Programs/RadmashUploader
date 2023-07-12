@@ -3,10 +3,7 @@ import sys
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QPushButton, QFileDialog, QMessageBox
-from dotenv import load_dotenv
-
-import os
-load_dotenv()
+import json
 
 
 class FileEntryWidget(QWidget):
@@ -61,7 +58,11 @@ class MainWindow(QMainWindow):
         server_url_layout = QHBoxLayout()
         self.server_url_label = QLabel("Server URL (don't change unless necessary):")
         self.server_url_entry = QLineEdit()
-        default_server_url = os.getenv('SERVER_URL')
+
+        with open('config.json') as config_file:
+            config = json.load(config_file)
+            default_server_url = config.get('SERVER_URL')
+
         self.server_url_entry.setText(default_server_url)
         server_url_layout.addWidget(self.server_url_label)
         server_url_layout.addWidget(self.server_url_entry)
