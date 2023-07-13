@@ -1,9 +1,13 @@
+import json
 import sys
 
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QPushButton, QFileDialog, QMessageBox
-import json
+
+SERVER_URL_CONFIG_KEY = 'SERVER_URL'
+FILE_FILTER = "Divrei Torah (*.pdf)"
+FILE_CONTENT_TYPE = 'application/pdf'
 
 
 class FileEntryWidget(QWidget):
@@ -63,11 +67,11 @@ class MainWindow(QMainWindow):
         try:
             with open('config.json') as config_file:
                 config = json.load(config_file)
-                default_server_url = config.get('SERVER_URL')
+                default_server_url = config.get(SERVER_URL_CONFIG_KEY)
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             default_server_url = ""
 
-        if default_server_url != "":
+        if default_server_url:
             self.server_url_entry.setReadOnly(True)
 
         self.server_url_entry.setText(default_server_url)
@@ -93,7 +97,7 @@ class MainWindow(QMainWindow):
     def select_files(self):
         file_dialog = QFileDialog()
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        file_dialog.setNameFilter("Divrei Torah (*.pdf)")
+        file_dialog.setNameFilter(FILE_FILTER)
         if file_dialog.exec_():
             file_paths = file_dialog.selectedFiles()
             for file_path in file_paths:
@@ -107,42 +111,44 @@ class MainWindow(QMainWindow):
     def remove_file_entry(self, file_entry):
         self.file_entries.remove(file_entry)
 
+    def handle_upload_response(self, response):
+        if response.status_code == 200:
+            QMessageBox.information(self, "Success", "Files uploaded successfully")
+        else:
+            QMessageBox.critical(self, "Error", f"Error uploading files: {response.text}")
+
     def upload_files(self):
         server_url = self.server_url_entry.text()  # Get the server URL from the input field
         if not server_url:
             QMessageBox.warning(self, "Warning", "Please enter a server URL")
             return
 
-        file_entries_data = []
-        files = []
-        empty_fields = False  # Flag to track if any input field is empty
+        try:
+            response = requests.post(server_url + '/upload', files=self.get_files_payload(),
+                                     data=self.get_data_payload())
+            self.handle_upload_response(response)
+        except requests.exceptions.RequestException as e:
+            QMessageBox.critical(self, "Error", f"Error uploading files: {str(e)}")
 
+    def get_files_payload(self):
+        files = []
         for file_entry in self.file_entries:
             file_path = file_entry.file_path
             file_name = file_path.split("/")[-1]
-            title = file_entry.title_entry.text()
-
-            if not title:  # Check if the title field is empty
-                empty_fields = True
-                QMessageBox.warning(self, "Warning", "Please enter a title for all files")
-                break
-
-            file_entries_data.append((file_path, file_name, title))
             with open(file_path, 'rb') as file:
                 file_content = file.read()
-                files.append(('file', (file_name, file_content, 'application/pdf')))
+                files.append(('file', (file_name, file_content, FILE_CONTENT_TYPE)))
+        return files
 
-        if empty_fields:
-            return
-
-        data = {f'title_{i + 1}': title for i, (_, _, title) in enumerate(file_entries_data)}
-
-        response = requests.post(server_url + '/upload', files=files, data=data)
-
-        if response.status_code == 200:
-            QMessageBox.information(self, "Success", "Files uploaded successfully")
-        else:
-            QMessageBox.critical(self, "Error", f"Error uploading files: {response.text}")
+    def get_data_payload(self):
+        data = {}
+        for i, file_entry in enumerate(self.file_entries):
+            title = file_entry.title_entry.text()
+            if not title:
+                QMessageBox.warning(self, "Warning", "Please enter a title for all files")
+                return {}
+            data[f'title_{i + 1}'] = title
+        return data
 
 
 if __name__ == "__main__":

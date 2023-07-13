@@ -21,26 +21,30 @@ remote = f"https://{username}:{password}@github.com/{username}/{repository}.git"
 
 
 def allowed_file(filename):
-    return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
 def update_html_file(uploaded_files, titles):
     with Repo.clone_from(remote, "repo") as repo:
         changed_files = []
+        kaarah_titles = []
+        maamarei_titles = []
 
         for file, title in zip(uploaded_files, titles):
             if file.lower().startswith('kaarah'):
                 fname = 'kaarah.html'
                 directory = app.config['KAARAH_FOLDER']
+                kaarah_titles.append(title)
             else:
                 fname = 'maamarei_mordechai.html'
                 directory = app.config['MAAMAREI_MORDECHAI_FOLDER']
+                maamarei_titles.append(title)
 
             if fname not in changed_files:
                 changed_files.append(fname)
-            filename = "repo/" + fname
-            shutil.move(file, os.path.join(directory, os.path.basename(file)))
+            filename = os.path.join("repo", fname)
+            destination = os.path.join(directory, os.path.basename(file))
+            shutil.move(file, destination)
 
             with open(filename, 'r+', encoding='utf-8') as f:
                 soup = BeautifulSoup(f, 'html.parser')
@@ -54,15 +58,12 @@ def update_html_file(uploaded_files, titles):
 
                 f.seek(0)
                 f.write(str(soup.prettify()))
-                f.truncate()
 
             changed_files.append(fname.removeprefix('/'))
 
-        kaarah_titles = [title for title in titles if title.startswith('Kaarah')]
-        maamarei_titles = [title for title in titles if not title.startswith('Kaarah')]
-
         repo.git.add(changed_files)
-        repo.index.commit("%s and %s" % (", ".join(maamarei_titles), ", ".join(kaarah_titles)))
+        message = f"Added {', '.join(maamarei_titles)}{' and ' if maamarei_titles and kaarah_titles else ''}{', '.join(kaarah_titles)}"
+        repo.index.commit(message)
         origin = repo.remote(name="origin")
         origin.push()
 
@@ -82,7 +83,6 @@ def upload_files():
             titles.append(title)
 
             filename = secure_filename(file_entry.filename)
-
             file_entry.save(filename)
             uploaded_files.append(filename)
 
