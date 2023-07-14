@@ -1,9 +1,12 @@
 import json
 import sys
+from datetime import datetime
 
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QPushButton, QFileDialog, QMessageBox
+from convertdate import hebrew
+from titlecase import titlecase
 
 SERVER_URL_CONFIG_KEY = 'SERVER_URL'
 FILE_FILTER = "Divrei Torah (*.pdf)"
@@ -21,6 +24,29 @@ class FileEntryWidget(QWidget):
         self.file_label.setText(file_path.split("/")[-1])
 
         self.title_entry = QLineEdit()
+
+        # filename either "Kaarah_forty_four.pdf" or "Pinchas_dvar_Torah_2023.pdf"
+        # title either "Volume Forty-Four" or "Pinchas 5783"
+        filename = self.file_label.text()
+        if filename.startswith("Kaarah"):
+            volume = filename.replace('_-_', '').removeprefix('Kaarah_').removeprefix('Kaarah').removesuffix(
+                '.pdf').replace('_', '-')
+            title = f"Volume {volume}"
+        else:
+            now = datetime.now()
+            year = now.year
+            month = now.month
+            day = now.day
+
+            filename = filename.replace("_-_", "").removesuffix(".pdf").replace("_dvar_Torah_", "").replace(
+                "_dvar_Torah", "").replace("-", "").replace("_", " - ")
+
+            if str(year) in filename:
+                title = filename.replace(str(year), "") + " " + str(hebrew.from_gregorian(year, month, day)[0])
+            else:
+                title = filename[:-4]
+
+        self.title_entry.setText(titlecase(title))
 
         self.remove_button = QPushButton("Remove")
         self.remove_button.clicked.connect(self.remove_self)
@@ -147,7 +173,7 @@ class MainWindow(QMainWindow):
             if not title:
                 QMessageBox.warning(self, "Warning", "Please enter a title for all files")
                 return {}
-            data[f'title_{i + 1}'] = title
+            data[f'title_{i + 1}'] = titlecase(title)
         return data
 
 
