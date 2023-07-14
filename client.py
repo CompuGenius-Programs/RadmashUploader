@@ -25,8 +25,6 @@ class FileEntryWidget(QWidget):
 
         self.title_entry = QLineEdit()
 
-        # filename either "Kaarah_forty_four.pdf" or "Pinchas_dvar_Torah_2023.pdf"
-        # title either "Volume Forty-Four" or "Pinchas 5783"
         filename = self.file_label.text()
         if filename.startswith("Kaarah"):
             volume = filename.replace('_-_', '').removeprefix('Kaarah_').removeprefix('Kaarah').removesuffix(
