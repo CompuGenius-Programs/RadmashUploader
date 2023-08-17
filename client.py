@@ -27,8 +27,7 @@ class FileEntryWidget(QWidget):
 
         filename = self.file_label.text()
         if filename.startswith("Kaarah"):
-            volume = filename.replace('_-_', '').removeprefix('Kaarah_').removeprefix('Kaarah').removesuffix(
-                '.pdf').replace('_', '-')
+            volume = titlecase(filename.removeprefix('Kaarah ').removesuffix('.pdf'))
             title = f"Volume {volume}"
         else:
             now = datetime.now()
@@ -36,9 +35,7 @@ class FileEntryWidget(QWidget):
             month = now.month
             day = now.day
 
-            filename = filename.replace("_-_", "").removesuffix(".pdf").replace("_dvar_Torah_", "").replace(
-                "_dvar_Torah", "").replace("-", "").replace("_", " - ")
-
+            filename = filename.removesuffix(".pdf").replace(" dvar Torah ", "")
             if str(year) in filename:
                 title = filename.replace(str(year), "") + " " + str(hebrew.from_gregorian(year, month, day)[0])
             else:
