@@ -40,29 +40,30 @@ def update_html_file(uploaded_files, titles):
                 directory = app.config['MAAMAREI_MORDECHAI_FOLDER']
                 maamarei_titles.append(title)
 
-            if fname not in changed_files:
-                changed_files.append(fname)
-            filename = os.path.join("repo", fname)
+            # if fname not in changed_files:
+            #     changed_files.append(fname)
+            # filename = os.path.join("repo", fname)
             destination = os.path.join(directory, os.path.basename(file))
             shutil.move(file, destination)
 
-            with open(filename, 'r+', encoding='utf-8') as f:
-                soup = BeautifulSoup(f, 'html.parser')
-                target_ul = soup.find('ul', {'id': 'file-list'})
-                li_tag = soup.new_tag('li')
-                fname = "%s/%s" % (directory.removeprefix('repo'), file.replace('\\', '/'))
-                a_tag = soup.new_tag('a', href=fname, target='blank')
-                a_tag.string = title
-                li_tag.append(a_tag)
-                target_ul.insert(0, li_tag)
+            # with open(filename, 'r+', encoding='utf-8') as f:
+            #     soup = BeautifulSoup(f, 'html.parser')
+            #     target_ul = soup.find('ul', {'id': 'file-list'})
+            #     li_tag = soup.new_tag('li')
+            #     fname = "%s/%s" % (directory.removeprefix('repo'), file.replace('\\', '/'))
+            #     a_tag = soup.new_tag('a', href=fname, target='blank')
+            #     a_tag.string = title
+            #     li_tag.append(a_tag)
+            #     target_ul.insert(0, li_tag)
+            #
+            #     f.seek(0)
+            #     f.write(str(soup.prettify()))
 
-                f.seek(0)
-                f.write(str(soup.prettify()))
-
-            changed_files.append(fname.removeprefix('/'))
+            changed_files.append(directory.removeprefix('/repo') + "/" + file.replace('\\', '/'))
 
         repo.git.add(changed_files)
-        message = f"Added {', '.join(maamarei_titles)}{' and ' if maamarei_titles and kaarah_titles else ''}{', '.join(kaarah_titles)}"
+        # message = f"Added {', '.join(maamarei_titles)}{' and ' if maamarei_titles and kaarah_titles else ''}{', '.join(kaarah_titles)}"
+        message = f"Added {', '.join(changed_files)}"
         repo.index.commit(message)
         origin = repo.remote(name="origin")
         origin.push()

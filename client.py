@@ -1,16 +1,28 @@
 import json
+import os
 import sys
 from datetime import datetime
 
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QPushButton, QFileDialog, QMessageBox
+    QPushButton, QFileDialog, QMessageBox, QComboBox
 from convertdate import hebrew
 from titlecase import titlecase
 
 SERVER_URL_CONFIG_KEY = 'SERVER_URL'
 FILE_FILTER = "Divrei Torah (*.pdf)"
 FILE_CONTENT_TYPE = 'application/pdf'
+
+parshas = ["Bereishis", "Noach", "Lech Lecha", "Vayera", "Chayei Sarah", "Toldos", "Vayetzei", "Vayishlach",
+                "Vayeshev", "Channukah", "Miketz", "Vayigash", "Vayechi", "Shmos", "Vaera", "Bo", "Beshalach", "Yisro",
+                "Mishpatim", "Teruma", "Titzaveh", "Purim", "Ki Sisa", "Vayakel - Pekudei", "Vayakel", "Pekudei",
+                "Vayikra", "Tzav", "Shmini", "Pesach", "Tazria - Metzora", "Tazria", "Metzora", "Achrei Mos - Kedoshim",
+                "Achrei Mos", "Kedoshim", "Emor", "Behar - Bechukosai", "Behar", "Bechukosai", "Bamidbar and Shavuos",
+                "Bamidbar", "Shavuos", "Rus", "Naso", "Beha'aloscha", "Shlach", "Korach", "Chukas", "Balak", "Pinchas",
+                "Matos - Maasei", "Matos", "Maasei", "Devarim", "Vaeschanan", "Eikev", "Re'eh", "Shoftim",
+                "Ki Tzeitzei", "Ki Savo", "Nitzavim - Vayeilech", "Nitzavim - Rosh Hashanah", "Nitzavim",
+                "Rosh Hashanah", "Vayeilech", "Yom Kippur", "Haazinu and Succos", "Haazinu", "Succos",
+                "Vezot Haberachah"]
 
 
 class FileEntryWidget(QWidget):
@@ -26,22 +38,43 @@ class FileEntryWidget(QWidget):
         self.title_entry = QLineEdit()
 
         filename = self.file_label.text()
-        if filename.startswith("Kaarah"):
-            volume = titlecase(filename.removeprefix('Kaarah ').removesuffix('.pdf'))
-            title = f"Volume {volume}"
+        # if filename.startswith("Kaarah"):
+        #     volume = titlecase(filename.removeprefix('Kaarah ').removesuffix('.pdf'))
+        #     title = f"Volume {volume}"
+        # else:
+        #     now = datetime.now()
+        #     year = now.year
+        #     month = now.month
+        #     day = now.day
+        #
+        #     filename = filename.removesuffix(".pdf").replace(" dvar Torah ", "")
+        #     if str(year) in filename:
+        #         title = filename.replace(str(year), "") + " " + str(hebrew.from_gregorian(year, month, day)[0])
+        #     else:
+        #         title = filename[:-4]
+
+        # self.title_entry.setText(titlecase(title))
+
+        self.parsha_dropdown = QComboBox()
+        self.parsha_dropdown.addItems(parshas)
+        for parsha in parshas:
+            if (parsha.lower() in filename.lower() and
+                    ((parsha.lower() + ' ') in filename.lower() or(parsha.lower() + '_') in filename.lower())):
+                self.parsha_dropdown.setCurrentText(parsha)
+                break
+
+        self.year_input = QLineEdit()
+        if '20' in filename:
+            try:
+                gregorian_year = filename.split('20')[-1].split('.')[0]
+                file_creation_date = datetime.fromtimestamp(os.path.getctime(file_path))
+                year = str(hebrew.from_gregorian(
+                    int('20' + gregorian_year), file_creation_date.month, file_creation_date.day)[0])
+            except ValueError:
+                year = ''
         else:
-            now = datetime.now()
-            year = now.year
-            month = now.month
-            day = now.day
-
-            filename = filename.removesuffix(".pdf").replace(" dvar Torah ", "")
-            if str(year) in filename:
-                title = filename.replace(str(year), "") + " " + str(hebrew.from_gregorian(year, month, day)[0])
-            else:
-                title = filename[:-4]
-
-        self.title_entry.setText(titlecase(title))
+            year = '57' + filename.split('57')[-1].split('.')[0]
+        self.year_input.setText(year)
 
         self.remove_button = QPushButton("Remove")
         self.remove_button.clicked.connect(self.remove_self)
@@ -51,8 +84,12 @@ class FileEntryWidget(QWidget):
         file_layout.addWidget(self.remove_button)
 
         entry_layout = QHBoxLayout()
-        entry_layout.addWidget(QLabel("Title:"))
-        entry_layout.addWidget(self.title_entry)
+        # entry_layout.addWidget(QLabel("Title:"))
+        # entry_layout.addWidget(self.title_entry)
+        entry_layout.addWidget(QLabel("Parsha:"))
+        entry_layout.addWidget(self.parsha_dropdown)
+        entry_layout.addWidget(QLabel("Hebrew Year:"))
+        entry_layout.addWidget(self.year_input)
 
         layout = QVBoxLayout()
         layout.addLayout(file_layout)
@@ -155,7 +192,9 @@ class MainWindow(QMainWindow):
         files = []
         for file_entry in self.file_entries:
             file_path = file_entry.file_path
-            file_name = file_path.split("/")[-1]
+            file_name = (file_entry.parsha_dropdown.currentText().lower().replace(' ', '_') +
+                         "_" + file_entry.year_input.text() + ".pdf")
+            # file_name = file_path.split("/")[-1]
             with open(file_path, 'rb') as file:
                 file_content = file.read()
                 files.append(('file', (file_name, file_content, FILE_CONTENT_TYPE)))
@@ -164,11 +203,12 @@ class MainWindow(QMainWindow):
     def get_data_payload(self):
         data = {}
         for i, file_entry in enumerate(self.file_entries):
-            title = file_entry.title_entry.text()
-            if not title:
-                QMessageBox.warning(self, "Warning", "Please enter a title for all files")
+            parsha = file_entry.parsha_dropdown.currentText()
+            year = file_entry.year_input.text()
+            if not parsha or not year:
+                QMessageBox.warning(self, "Warning", "Please enter a parsha and year for all files")
                 return {}
-            data[f'title_{i + 1}'] = titlecase(title)
+            data[f'title_{i + 1}'] = titlecase(parsha + " " + year)
         return data
 
 
