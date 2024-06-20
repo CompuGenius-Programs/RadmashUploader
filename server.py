@@ -59,11 +59,10 @@ def update_html_file(uploaded_files, titles):
             #     f.seek(0)
             #     f.write(str(soup.prettify()))
 
-            changed_files.append(directory.removeprefix('/repo') + "/" + file.replace('\\', '/'))
+            changed_files.append((directory.removeprefix('repo') + "/" + file.replace('\\', '/')).removeprefix('/'))
 
         repo.git.add(changed_files)
-        # message = f"Added {', '.join(maamarei_titles)}{' and ' if maamarei_titles and kaarah_titles else ''}{', '.join(kaarah_titles)}"
-        message = f"Added {', '.join(changed_files)}"
+        message = f"Added {', '.join(maamarei_titles)}{' and ' if maamarei_titles and kaarah_titles else ''}{', '.join(kaarah_titles)}"
         repo.index.commit(message)
         origin = repo.remote(name="origin")
         origin.push()
