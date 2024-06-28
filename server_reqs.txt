@@ -1,0 +1,4 @@
+Flask
+Werkzeug
+GitPython
+python-dotenv

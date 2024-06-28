@@ -1,9 +1,0 @@
-Flask
-beautifulsoup4
-requests
-Werkzeug
-PyQt5
-GitPython==3.1.32
-python-dotenv
-titlecase
-convertdate
