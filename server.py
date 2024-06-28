@@ -1,7 +1,5 @@
 import os
-import shutil
 
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from flask import Flask, request
 from git import Repo, rmtree
@@ -32,32 +30,11 @@ def update_html_file(uploaded_files, titles):
 
         for file, title in zip(uploaded_files, titles):
             if file.lower().startswith('kaarah'):
-                fname = 'kaarah.html'
                 directory = app.config['KAARAH_FOLDER']
                 kaarah_titles.append(title)
             else:
-                fname = 'maamarei_mordechai.html'
                 directory = app.config['MAAMAREI_MORDECHAI_FOLDER']
                 maamarei_titles.append(title)
-
-            # if fname not in changed_files:
-            #     changed_files.append(fname)
-            # filename = os.path.join("repo", fname)
-            destination = os.path.join(directory, os.path.basename(file))
-            shutil.move(file, destination)
-
-            # with open(filename, 'r+', encoding='utf-8') as f:
-            #     soup = BeautifulSoup(f, 'html.parser')
-            #     target_ul = soup.find('ul', {'id': 'file-list'})
-            #     li_tag = soup.new_tag('li')
-            #     fname = "%s/%s" % (directory.removeprefix('repo'), file.replace('\\', '/'))
-            #     a_tag = soup.new_tag('a', href=fname, target='blank')
-            #     a_tag.string = title
-            #     li_tag.append(a_tag)
-            #     target_ul.insert(0, li_tag)
-            #
-            #     f.seek(0)
-            #     f.write(str(soup.prettify()))
 
             changed_files.append((directory.removeprefix('repo') + "/" + file.replace('\\', '/')).removeprefix('/'))
 
