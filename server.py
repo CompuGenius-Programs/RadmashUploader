@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from dotenv import load_dotenv
 from flask import Flask, request
@@ -29,12 +30,16 @@ def update_html_file(uploaded_files, titles):
         maamarei_titles = []
 
         for file, title in zip(uploaded_files, titles):
+            file = str(file)
             if file.lower().startswith('kaarah'):
                 directory = app.config['KAARAH_FOLDER']
                 kaarah_titles.append(title)
             else:
                 directory = app.config['MAAMAREI_MORDECHAI_FOLDER']
                 maamarei_titles.append(title)
+
+            destination = str(os.path.join(directory, os.path.basename(file)))
+            shutil.move(file, destination)
 
             changed_files.append((directory.removeprefix('repo') + "/" + file.replace('\\', '/')).removeprefix('/'))
 
