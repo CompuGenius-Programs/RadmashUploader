@@ -13,7 +13,7 @@ SERVER_URL_CONFIG_KEY = 'SERVER_URL'
 FILE_FILTER = "Divrei Torah (*.pdf)"
 FILE_CONTENT_TYPE = 'application/pdf'
 
-parshas_url = "https://github.com/CompuGenius-Programs/RadmashUploader/blob/main/parshas.json"
+parshas_url = "https://raw.githubusercontent.com/CompuGenius-Programs/RadmashUploader/main/parshas.json"
 parshas = requests.get(parshas_url).json()["parshas"]
 
 
