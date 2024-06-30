@@ -5,7 +5,7 @@ from datetime import datetime
 
 import requests
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QPushButton, QFileDialog, QMessageBox, QComboBox
+    QPushButton, QFileDialog, QMessageBox, QComboBox, QProgressDialog
 from convertdate import hebrew
 from titlecase import titlecase
 
@@ -13,16 +13,8 @@ SERVER_URL_CONFIG_KEY = 'SERVER_URL'
 FILE_FILTER = "Divrei Torah (*.pdf)"
 FILE_CONTENT_TYPE = 'application/pdf'
 
-parshas = ["Bereishis", "Noach", "Lech Lecha", "Vayera", "Chayei Sarah", "Toldos", "Vayetzei", "Vayishlach",
-                "Vayeshev", "Channukah", "Miketz", "Vayigash", "Vayechi", "Shmos", "Vaera", "Bo", "Beshalach", "Yisro",
-                "Mishpatim", "Teruma", "Titzaveh", "Purim", "Ki Sisa", "Vayakel - Pekudei", "Vayakel", "Pekudei",
-                "Vayikra", "Tzav", "Shmini", "Pesach", "Tazria - Metzora", "Tazria", "Metzora", "Achrei Mos - Kedoshim",
-                "Achrei Mos", "Kedoshim", "Emor", "Behar - Bechukosai", "Behar", "Bechukosai", "Bamidbar and Shavuos",
-                "Bamidbar", "Shavuos", "Rus", "Naso", "Beha'aloscha", "Shlach", "Korach", "Chukas", "Balak", "Pinchas",
-                "Matos - Maasei", "Matos", "Maasei", "Devarim", "Vaeschanan", "Eikev", "Re'eh", "Shoftim",
-                "Ki Tzeitzei", "Ki Savo", "Nitzavim - Vayeilech", "Nitzavim - Rosh Hashanah", "Nitzavim",
-                "Rosh Hashanah", "Vayeilech", "Yom Kippur", "Haazinu and Succos", "Haazinu", "Succos",
-                "Vezot Haberachah"]
+parshas_url = "https://github.com/CompuGenius-Programs/RadmashUploader/blob/main/parshas.json"
+parshas = requests.get(parshas_url).json()["parshas"]
 
 
 class FileEntryWidget(QWidget):
@@ -98,7 +90,7 @@ class FileEntryWidget(QWidget):
         self.setLayout(layout)
 
     def remove_self(self):
-        self.main_window.remove_file_entry(self)  # Notify the main window to remove this entry
+        self.main_window.remove_file_entry(self)
         self.setParent(None)
         self.deleteLater()
 
@@ -176,17 +168,19 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", f"Error uploading files: {response.text}")
 
     def upload_files(self):
-        server_url = self.server_url_entry.text()  # Get the server URL from the input field
+        server_url = self.server_url_entry.text()
         if not server_url:
             QMessageBox.warning(self, "Warning", "Please enter a server URL")
             return
 
+        progress = QProgressDialog("Uploading files...", None, 0, 0, self)
         try:
             response = requests.post(server_url + '/upload', files=self.get_files_payload(),
                                      data=self.get_data_payload())
             self.handle_upload_response(response)
         except requests.exceptions.RequestException as e:
-            QMessageBox.critical(self, "Error", f"Error uploading files: {str(e)}")
+            QMessageBox.critical(self, "Error", str(e))
+        progress.close()
 
     def get_files_payload(self):
         files = []
