@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 
 import requests
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QPushButton, QFileDialog, QMessageBox, QComboBox, QProgressDialog
 from convertdate import hebrew
@@ -174,6 +175,10 @@ class MainWindow(QMainWindow):
             return
 
         progress = QProgressDialog("Uploading files...", None, 0, 0, self)
+        progress.setWindowFlags(progress.windowFlags() & ~(Qt.WindowCloseButtonHint | Qt.WindowContextHelpButtonHint))
+        progress.setWindowTitle("Radmash Uploader")
+        progress.show()
+
         try:
             response = requests.post(server_url + '/upload', files=self.get_files_payload(),
                                      data=self.get_data_payload())
