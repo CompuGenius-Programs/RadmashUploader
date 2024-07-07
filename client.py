@@ -4,9 +4,9 @@ import sys
 from datetime import datetime
 
 import requests
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QPushButton, QFileDialog, QMessageBox, QComboBox, QProgressDialog
+    QPushButton, QFileDialog, QMessageBox, QComboBox, QProgressDialog, QDialog, QTextEdit
 from convertdate import hebrew
 from titlecase import titlecase
 
@@ -14,8 +14,25 @@ SERVER_URL_CONFIG_KEY = 'SERVER_URL'
 FILE_FILTER = "Divrei Torah (*.pdf)"
 FILE_CONTENT_TYPE = 'application/pdf'
 
-parshas_url = "https://raw.githubusercontent.com/CompuGenius-Programs/RadmashUploader/main/parshas.json"
+parshas_url = "https://raw.githubusercontent.com/CompuGenius-Programs/Radmash/main/parshas.json"
 parshas = requests.get(parshas_url).json()["parshas"]
+
+
+class UploadThread(QThread):
+    finished = pyqtSignal(object)  # Signal to emit the response or exception
+
+    def __init__(self, url, files, data):
+        super().__init__()
+        self.url = url
+        self.files = files
+        self.data = data
+
+    def run(self):
+        try:
+            response = requests.post(self.url, files=self.files, data=self.data)
+            self.finished.emit(response)
+        except Exception as e:
+            self.finished.emit(e)
 
 
 class FileEntryWidget(QWidget):
@@ -51,8 +68,8 @@ class FileEntryWidget(QWidget):
         self.parsha_dropdown = QComboBox()
         self.parsha_dropdown.addItems(parshas)
         for parsha in parshas:
-            if (parsha.lower() in filename.lower() and
-                    ((parsha.lower() + ' ') in filename.lower() or(parsha.lower() + '_') in filename.lower())):
+            if (parsha.lower() in filename.lower() and (
+                    (parsha.lower() + ' ') in filename.lower() or (parsha.lower() + '_') in filename.lower())):
                 self.parsha_dropdown.setCurrentText(parsha)
                 break
 
@@ -61,8 +78,9 @@ class FileEntryWidget(QWidget):
             try:
                 gregorian_year = filename.split('20')[-1].split('.')[0]
                 file_creation_date = datetime.fromtimestamp(os.path.getctime(file_path))
-                year = str(hebrew.from_gregorian(
-                    int('20' + gregorian_year), file_creation_date.month, file_creation_date.day)[0])
+                year = str(
+                    hebrew.from_gregorian(int('20' + gregorian_year), file_creation_date.month, file_creation_date.day)[
+                        0])
             except ValueError:
                 year = ''
         else:
@@ -94,6 +112,31 @@ class FileEntryWidget(QWidget):
         self.main_window.remove_file_entry(self)
         self.setParent(None)
         self.deleteLater()
+
+
+class ErrorDialog(QDialog):
+    def __init__(self, parent=None, error_message="Error", detailed_text=""):
+        super().__init__(parent)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowSystemMenuHint | Qt.WindowMaximizeButtonHint)
+        self.setWindowTitle("Error")
+        self.init_ui(error_message, detailed_text)
+
+    def init_ui(self, error_message, detailed_text):
+        layout = QVBoxLayout()
+
+        error_label = QLabel(error_message)
+        layout.addWidget(error_label)
+
+        detailed_text_edit = QTextEdit()
+        detailed_text_edit.setReadOnly(True)
+        detailed_text_edit.setText(detailed_text)
+        layout.addWidget(detailed_text_edit)
+
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(self.close)
+        layout.addWidget(close_button)
+
+        self.setLayout(layout)
 
 
 class MainWindow(QMainWindow):
@@ -137,6 +180,8 @@ class MainWindow(QMainWindow):
         self.submit_button = QPushButton("Submit")
         self.submit_button.clicked.connect(self.upload_files)
 
+        self.progress = None
+
         main_layout.addLayout(server_url_layout)
         main_layout.addWidget(self.select_button)
         main_layout.addLayout(self.files_layout)
@@ -146,13 +191,27 @@ class MainWindow(QMainWindow):
         self.server_url_entry.setReadOnly(False)
 
     def select_files(self):
+        try:
+            with open('config.json') as config_file:
+                config = json.load(config_file)
+                last_directory = config.get("LAST_DIRECTORY", "")
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            last_directory = ""
+
         file_dialog = QFileDialog()
+        file_dialog.setDirectory(last_directory)
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
         file_dialog.setNameFilter(FILE_FILTER)
         if file_dialog.exec_():
             file_paths = file_dialog.selectedFiles()
             for file_path in file_paths:
                 self.add_file_entry(file_path)
+
+            if file_paths:
+                selected_directory = os.path.dirname(file_paths[0])
+                config["LAST_DIRECTORY"] = selected_directory
+                with open('config.json', 'w') as config_file:
+                    json.dump(config, config_file)
 
     def add_file_entry(self, file_path):
         file_entry_widget = FileEntryWidget(file_path, self)
@@ -174,25 +233,34 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Warning", "Please enter a server URL")
             return
 
-        progress = QProgressDialog("Uploading files...", None, 0, 0, self)
-        progress.setWindowFlags(progress.windowFlags() & ~(Qt.WindowCloseButtonHint | Qt.WindowContextHelpButtonHint))
-        progress.setWindowTitle("Radmash Uploader")
-        progress.show()
+        self.progress = QProgressDialog("Uploading files...", None, 0, 0, self)
+        self.progress.setWindowFlags(
+            self.progress.windowFlags() & ~(Qt.WindowCloseButtonHint | Qt.WindowContextHelpButtonHint))
+        self.progress.setWindowTitle("Radmash Uploader")
+        self.progress.show()
 
-        try:
-            response = requests.post(server_url + '/upload', files=self.get_files_payload(),
-                                     data=self.get_data_payload())
-            self.handle_upload_response(response)
-        except requests.exceptions.RequestException as e:
-            QMessageBox.critical(self, "Error", str(e))
-        progress.close()
+        self.upload_thread = UploadThread(server_url + '/upload', self.get_files_payload(), self.get_data_payload())
+        self.upload_thread.finished.connect(self.handle_upload_response_thread)
+        self.upload_thread.start()
+
+    def handle_upload_response_thread(self, result):
+        if isinstance(result, requests.Response) and result.status_code == 200:
+            if result.status_code == 200:
+                QMessageBox.information(self, "Success", "Files uploaded successfully")
+            else:
+                dialog = ErrorDialog(error_message="Error uploading files", detailed_text=result.text)
+                dialog.exec_()
+        else:
+            dialog = ErrorDialog(error_message="Error uploading files", detailed_text=str(result))
+            dialog.exec_()
+        self.progress.close()
 
     def get_files_payload(self):
         files = []
         for file_entry in self.file_entries:
             file_path = file_entry.file_path
-            file_name = (file_entry.parsha_dropdown.currentText().lower().replace(' ', '_') +
-                         "_" + file_entry.year_input.text() + ".pdf")
+            file_name = (file_entry.parsha_dropdown.currentText().lower().replace(' ',
+                                                                                  '_') + "_" + file_entry.year_input.text() + ".pdf")
             # file_name = file_path.split("/")[-1]
             with open(file_path, 'rb') as file:
                 file_content = file.read()
