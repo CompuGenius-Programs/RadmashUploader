@@ -65,7 +65,7 @@ def upload_files():
             titles.append(title)
 
             filename = secure_filename(file_entry.filename)
-            file_entry.save("repo/divrei_torah/" + filename)
+            file_entry.save(filename)
             uploaded_files.append(filename)
 
     update_html_file(uploaded_files, titles)
