@@ -3,7 +3,7 @@ import shutil
 
 from dotenv import load_dotenv
 from flask import Flask, request
-from git import Repo, rmtree
+from git import Repo
 from werkzeug.utils import secure_filename
 
 load_dotenv()
@@ -24,7 +24,7 @@ def allowed_file(filename):
 
 
 def update_html_file(uploaded_files, titles):
-    rmtree("repo")
+    shutil.rmtree('repo', ignore_errors=True)
     with Repo.clone_from(remote, "repo") as repo:
         changed_files = []
         kaarah_titles = []
