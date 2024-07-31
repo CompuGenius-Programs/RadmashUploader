@@ -24,6 +24,7 @@ def allowed_file(filename):
 
 
 def update_html_file(uploaded_files, titles):
+    rmtree("repo")
     with Repo.clone_from(remote, "repo") as repo:
         changed_files = []
         kaarah_titles = []
@@ -48,8 +49,6 @@ def update_html_file(uploaded_files, titles):
         repo.index.commit(message)
         origin = repo.remote(name="origin")
         origin.push()
-
-    rmtree("repo")
 
 
 @app.route('/upload', methods=['POST'])
