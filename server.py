@@ -63,7 +63,7 @@ def upload_files():
             title = request.form.get(title_key)
             titles.append(title)
 
-            filename = secure_filename(file_entry.filename)
+            filename = file_entry.filename.replace(' ', '_')
             file_entry.save(filename)
             uploaded_files.append(filename)
 
@@ -73,4 +73,4 @@ def upload_files():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8080)
